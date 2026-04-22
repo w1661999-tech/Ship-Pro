@@ -1,11 +1,8 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-export default defineConfig(({ mode }) => {
-  // Load env variables for the current mode
-  const env = loadEnv(mode, process.cwd(), '')
-
+export default defineConfig(() => {
   return {
     plugins: [
       react({
@@ -57,42 +54,10 @@ export default defineConfig(({ mode }) => {
       // Rollup options for advanced code splitting
       rollupOptions: {
         output: {
-          // Manual chunk splitting for better caching
-          // Note: Order matters – more specific rules first to avoid circular deps
-          manualChunks(id) {
-            // Charts (large) – must come before React to avoid circular with recharts
-            if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
-              return 'vendor-charts'
-            }
-            // Supabase (standalone)
-            if (id.includes('node_modules/@supabase/')) {
-              return 'vendor-supabase'
-            }
-            // React Router (depends on react but isolated)
-            if (id.includes('node_modules/react-router-dom') || id.includes('node_modules/react-router/') || id.includes('node_modules/@remix-run/')) {
-              return 'vendor-router'
-            }
-            // React core (base layer)
-            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/scheduler/')) {
-              return 'vendor-react'
-            }
-            // State management & data fetching
-            if (id.includes('node_modules/zustand') || id.includes('node_modules/@tanstack/')) {
-              return 'vendor-data'
-            }
-            // UI utilities (no React deps in chunk)
-            if (id.includes('node_modules/lucide-react') || id.includes('node_modules/clsx') || id.includes('node_modules/tailwind-merge')) {
-              return 'vendor-ui'
-            }
-            // Toast (uses React but isolated)
-            if (id.includes('node_modules/react-hot-toast')) {
-              return 'vendor-ui'
-            }
-            // Other node_modules → misc bundle
-            if (id.includes('node_modules/')) {
-              return 'vendor-misc'
-            }
-          },
+          // Use Rollup/Vite default chunking.
+          // The previous custom manualChunks strategy created circular chunk dependencies
+          // in production (vendor-charts -> vendor-ui -> vendor-misc -> vendor-charts),
+          // which caused runtime initialization errors and left the app stuck on the splash screen.
 
           // Asset file naming for long-term caching
           assetFileNames: (assetInfo) => {

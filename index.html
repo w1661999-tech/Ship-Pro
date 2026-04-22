@@ -90,16 +90,26 @@
     
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // Hide loader when React mounts
-      window.addEventListener('load', function() {
-        setTimeout(function() {
+      (function() {
+        function hideLoader() {
           var loader = document.getElementById('app-loader');
-          if (loader) {
-            loader.classList.add('hidden');
-            setTimeout(function() { loader.remove(); }, 300);
-          }
-        }, 500);
-      });
+          if (!loader || loader.classList.contains('hidden')) return;
+          loader.classList.add('hidden');
+          setTimeout(function() {
+            if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
+          }, 300);
+        }
+
+        // Preferred path: hide only after React successfully mounts.
+        window.addEventListener('ship-pro:app-mounted', function() {
+          setTimeout(hideLoader, 150);
+        });
+
+        // Fallback path: if React mount event never arrives, don't block the screen forever.
+        window.addEventListener('load', function() {
+          setTimeout(hideLoader, 2500);
+        });
+      })();
     </script>
   </body>
 </html>

@@ -13,7 +13,6 @@ if (!supabaseAnonKey) {
 
 // Create untyped client to avoid complex generic type issues
 // All table types are enforced at the component level via interface casting
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const supabase: SupabaseClient<any, 'public', any> = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,

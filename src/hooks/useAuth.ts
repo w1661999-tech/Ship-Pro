@@ -91,7 +91,7 @@ export function useAuth() {
       clearTimeout(timeoutId)
       subscription.unsubscribe()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   return { user, loading, isAuthenticated: !!user }
 }

@@ -3,21 +3,13 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 
-// Log environment variables for debugging
-console.log('🔍 Environment Variables:', {
-  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? '✓ موجود' : '✗ مفقود',
-  VITE_APP_NAME: import.meta.env.VITE_APP_NAME,
-  MODE: import.meta.env.MODE,
-})
-
 const root = document.getElementById('root')
 
 if (!root) {
   document.body.innerHTML = `
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif; background: #f0f0f0;">
-      <h1 style="color: red; margin-bottom: 20px;">❌ خطأ حرج: عنصر #root غير موجود</h1>
-      <p>يرجى التحقق من ملف index.html</p>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Arial,sans-serif;background:#f8fafc;padding:24px;text-align:center;direction:rtl;">
+      <h1 style="color:#dc2626;margin-bottom:16px;">❌ خطأ حرج: عنصر التطبيق غير موجود</h1>
+      <p style="color:#475569;max-width:480px;line-height:1.8;">تعذر تهيئة النظام لأن عنصر <code>#root</code> غير موجود داخل الصفحة الحالية.</p>
     </div>
   `
 } else {
@@ -26,4 +18,6 @@ if (!root) {
       <App />
     </React.StrictMode>
   )
+
+  window.dispatchEvent(new CustomEvent('ship-pro:app-mounted'))
 }

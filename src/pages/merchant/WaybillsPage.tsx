@@ -56,7 +56,7 @@ export default function WaybillsPage() {
 
   useEffect(() => {
     if (merchantData?.id) loadShipments(merchantData.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [statusFilter])
 
   const toggleSelect = (id: string) => {

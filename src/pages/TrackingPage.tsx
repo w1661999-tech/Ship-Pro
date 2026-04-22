@@ -97,7 +97,7 @@ export default function TrackingPage() {
       setTrackingNumber(idParam.toUpperCase())
       handleTrackById(idParam.toUpperCase())
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [])
 
   async function handleTrackById(number: string) {
