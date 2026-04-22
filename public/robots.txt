@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /track
+Disallow: /admin/
+Disallow: /merchant/
+Disallow: /driver/
+
+Sitemap: https://ship-pro.pages.dev/sitemap.xml

@@ -1,0 +1,85 @@
+# ==========================================
+# Ship Pro – .gitignore
+# ==========================================
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+
+# Local environment files (NEVER commit these)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Note: .env.production is committed (no secrets inside, only public keys)
+# Real secrets go in Vercel environment variables
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Test results & reports (large artifacts, stored in CI)
+test-results/
+playwright-report/
+
+# Editor config
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache
+.npm
+
+# PM2
+.pm2/
+
+# Vercel
+.vercel
+
+# Misc
+*.tar.gz
+*.zip
+*.backup
+.vercel
+
+# Workflow files (push requires 'workflows' GitHub App permission)
+.github/workflows/ci-cd.yml
+.github/workflows/ci.yml
+.github/workflows/pr-check.yml

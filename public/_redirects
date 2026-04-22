@@ -1,0 +1,12 @@
+# Cloudflare Pages SPA redirect rules
+# All routes → index.html (React Router handles client-side routing)
+
+/track          /index.html     200
+/login          /index.html     200
+/admin/*        /index.html     200
+/merchant/*     /index.html     200
+/driver/*       /index.html     200
+/tracking       /track          301
+
+# Catch-all: serve index.html for all unmatched routes (SPA)
+/*              /index.html     200
