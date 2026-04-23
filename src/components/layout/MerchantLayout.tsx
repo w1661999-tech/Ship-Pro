@@ -5,9 +5,10 @@ import { useAuthStore } from '@/store/authStore'
 import { signOut } from '@/lib/supabase'
 import {
   LayoutDashboard, Package, Plus, Printer,
-  DollarSign, LogOut, Menu, X, FileSpreadsheet
+  DollarSign, LogOut, Menu, X, FileSpreadsheet, LifeBuoy
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import NotificationBell from '@/components/NotificationBell'
 
 const navItems = [
   { label: 'لوحة التحكم', path: '/merchant', icon: LayoutDashboard, exact: true },
@@ -16,6 +17,7 @@ const navItems = [
   { label: 'استيراد بالجملة', path: '/merchant/import', icon: FileSpreadsheet },
   { label: 'بوالص الشحن', path: '/merchant/waybills', icon: Printer },
   { label: 'حسابي المالي', path: '/merchant/finance', icon: DollarSign },
+  { label: 'الدعم والتذاكر', path: '/merchant/tickets', icon: LifeBuoy },
 ]
 
 export default function MerchantLayout() {
@@ -145,6 +147,7 @@ export default function MerchantLayout() {
             <Menu className="w-5 h-5 text-gray-600" />
           </button>
           <div className="flex items-center gap-2 mr-auto">
+            <NotificationBell />
             <span className="text-sm font-bold text-gray-700 hidden sm:block">{user?.full_name}</span>
             <button
               onClick={handleLogout}

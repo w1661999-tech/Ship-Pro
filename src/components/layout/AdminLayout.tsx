@@ -5,10 +5,11 @@ import { useAuthStore } from '@/store/authStore'
 import { signOut } from '@/lib/supabase'
 import {
   LayoutDashboard, Package, Users, TruckIcon, DollarSign,
-  MapPin, LogOut, Menu, X, ChevronDown, ChevronUp,
-  FileSpreadsheet, Coins, Bell
+  MapPin, LogOut, Menu, ChevronDown, ChevronUp,
+  FileSpreadsheet, LifeBuoy, Warehouse
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import NotificationBell from '@/components/NotificationBell'
 
 const navItems = [
   {
@@ -50,6 +51,16 @@ const navItems = [
     label: 'استيراد الشحنات',
     path: '/admin/import',
     icon: FileSpreadsheet,
+  },
+  {
+    label: 'المخازن والأرفف',
+    path: '/admin/warehouses',
+    icon: Warehouse,
+  },
+  {
+    label: 'الدعم والتذاكر',
+    path: '/admin/tickets',
+    icon: LifeBuoy,
   },
 ]
 
@@ -238,6 +249,7 @@ export default function AdminLayout() {
           </button>
 
           <div className="flex items-center gap-2 mr-auto">
+            <NotificationBell />
             <span className="text-sm font-bold text-gray-700 hidden sm:block">{user?.full_name}</span>
             <button
               onClick={handleLogout}

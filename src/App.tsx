@@ -20,6 +20,8 @@ const PricingPage = React.lazy(() => import('@/pages/admin/PricingPage'))
 const FinancePage = React.lazy(() => import('@/pages/admin/FinancePage'))
 const ImportPage = React.lazy(() => import('@/pages/admin/ImportPage'))
 const CollectionsPage = React.lazy(() => import('@/pages/admin/CollectionsPage'))
+const AdminTicketsPage = React.lazy(() => import('@/pages/admin/AdminTicketsPage'))
+const WarehousePage = React.lazy(() => import('@/pages/admin/WarehousePage'))
 
 const MerchantDashboard = React.lazy(() => import('@/pages/merchant/MerchantDashboard'))
 const MerchantShipmentsPage = React.lazy(() => import('@/pages/merchant/MerchantShipmentsPage'))
@@ -27,6 +29,7 @@ const AddShipmentPage = React.lazy(() => import('@/pages/merchant/AddShipmentPag
 const WaybillsPage = React.lazy(() => import('@/pages/merchant/WaybillsPage'))
 const MerchantFinancePage = React.lazy(() => import('@/pages/merchant/MerchantFinancePage'))
 const MerchantImportPage = React.lazy(() => import('@/pages/merchant/MerchantImportPage'))
+const MerchantTicketsPage = React.lazy(() => import('@/pages/merchant/MerchantTicketsPage'))
 
 const DriverDashboard = React.lazy(() => import('@/pages/driver/DriverDashboard'))
 const DriverShipmentsPage = React.lazy(() => import('@/pages/driver/DriverShipmentsPage'))
@@ -150,6 +153,8 @@ export default function App() {
                 <Route path="settlements" element={<FinancePage />} />
                 <Route path="collections" element={<CollectionsPage />} />
                 <Route path="import" element={<ImportPage />} />
+                <Route path="tickets" element={<AdminTicketsPage />} />
+                <Route path="warehouses" element={<WarehousePage />} />
               </Route>
 
               <Route
@@ -166,6 +171,7 @@ export default function App() {
                 <Route path="import" element={<MerchantImportPage />} />
                 <Route path="waybills" element={<WaybillsPage />} />
                 <Route path="finance" element={<MerchantFinancePage />} />
+                <Route path="tickets" element={<MerchantTicketsPage />} />
               </Route>
 
               <Route
