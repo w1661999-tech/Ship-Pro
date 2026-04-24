@@ -5,7 +5,7 @@ import { Card, StatCard } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { Warehouse, Box, Package, MapPin, Plus, Trash2, Loader2, ScanLine } from 'lucide-react'
+import { Warehouse, Box, Package, MapPin, Plus, Trash2, Loader2, ScanLine, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BarcodeScanner from '@/components/BarcodeScanner'
 
@@ -46,6 +46,7 @@ export default function WarehousePage() {
   const [showWhModal, setShowWhModal] = useState(false)
   const [showShelfModal, setShowShelfModal] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
+  const [schemaReady, setSchemaReady] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -58,6 +59,18 @@ export default function WarehousePage() {
         .order('created_at', { ascending: false })
         .limit(100),
     ])
+
+    // Detect missing schema (tables don't exist yet)
+    const missingSchema = [wh, sh, asg].some(r => {
+      const msg = (r.error?.message || '').toLowerCase()
+      return msg.includes('relation') && msg.includes('does not exist')
+    })
+    if (missingSchema) {
+      setSchemaReady(false)
+      setLoading(false)
+      return
+    }
+
     setWarehouses((wh.data || []) as WarehouseRow[])
     setShelves((sh.data || []) as Shelf[])
     setAssignments((asg.data || []) as Assignment[])
@@ -96,6 +109,32 @@ export default function WarehousePage() {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!schemaReady) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+            <Warehouse className="w-6 h-6 text-blue-600" />
+            إدارة المخازن والأرفف
+          </h1>
+        </div>
+        <Card className="border-2 border-amber-200 bg-amber-50">
+          <div className="py-6 text-center">
+            <Warehouse className="w-12 h-12 text-amber-600 mx-auto mb-3" />
+            <h2 className="text-lg font-black text-amber-900 mb-2">يحتاج هذا الموديول إلى تفعيل</h2>
+            <p className="text-sm text-amber-800 mb-4 max-w-md mx-auto">
+              جداول المخازن غير موجودة في قاعدة البيانات بعد. يرجى تطبيق الـ migration من صفحة إعدادات النظام.
+            </p>
+            <Button onClick={() => window.location.href = '/admin/system'}>
+              <ArrowLeft className="w-4 h-4 ml-1" />
+              الانتقال لإعدادات النظام
+            </Button>
+          </div>
+        </Card>
       </div>
     )
   }

@@ -42,6 +42,7 @@ export default function AdminTicketsPage() {
   const [loading, setLoading] = useState(true)
   const [active, setActive] = useState<Ticket | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('open')
+  const [schemaReady, setSchemaReady] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -50,8 +51,12 @@ export default function AdminTicketsPage() {
       .select('*, merchant:merchants(store_name, phone), shipment:shipments(tracking_number)')
       .order('created_at', { ascending: false })
     if (filterStatus) q = q.eq('status', filterStatus)
-    const { data } = await q
-    setTickets((data || []) as Ticket[])
+    const { data, error } = await q
+    if (error && (error.message || '').toLowerCase().includes('relation')) {
+      setSchemaReady(false)
+    } else {
+      setTickets((data || []) as Ticket[])
+    }
     setLoading(false)
   }, [filterStatus])
 
@@ -95,7 +100,16 @@ export default function AdminTicketsPage() {
         ))}
       </div>
 
-      {loading ? (
+      {!schemaReady ? (
+        <Card className="border-2 border-amber-200 bg-amber-50">
+          <div className="py-10 text-center">
+            <LifeBuoy className="w-12 h-12 text-amber-600 mx-auto mb-3" />
+            <h2 className="text-lg font-black text-amber-900 mb-2">نظام التذاكر غير مفعّل</h2>
+            <p className="text-sm text-amber-800 mb-4">جدول tickets غير موجود في قاعدة البيانات. يرجى تطبيق الـ migration.</p>
+            <Button onClick={() => window.location.href = '/admin/system'}>الانتقال لإعدادات النظام</Button>
+          </div>
+        </Card>
+      ) : loading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
         </div>

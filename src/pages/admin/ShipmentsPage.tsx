@@ -7,6 +7,7 @@ import { Input, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Table'
 import { formatCurrency, formatDate, SHIPMENT_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/utils/helpers'
+import { exportToExcel, todayStamp } from '@/utils/excelExport'
 import {
   Package, Search, Filter, Plus, RefreshCw, Eye, Edit2,
   Truck, CheckCircle, X, ChevronDown, Download
@@ -120,23 +121,29 @@ export default function ShipmentsPage() {
   }
 
   const handleExport = () => {
-    const csv = [
-      ['رقم التتبع', 'المستلم', 'الهاتف', 'العنوان', 'الحالة', 'مبلغ COD', 'رسوم الشحن', 'التاجر', 'المندوب', 'التاريخ'].join(','),
-      ...shipments.map(s => [
-        s.tracking_number, s.recipient_name, s.recipient_phone, s.recipient_address,
-        SHIPMENT_STATUS_LABELS[s.status], s.cod_amount, s.delivery_fee,
-        (s.merchant as { store_name?: string })?.store_name || '',
-        (s.courier as { name?: string })?.name || '',
-        new Date(s.created_at).toLocaleDateString('ar-EG')
-      ].join(','))
-    ].join('\n')
-
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `shipments-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
+    exportToExcel(
+      shipments,
+      [
+        { header: 'رقم التتبع', key: 'tracking_number', width: 20 },
+        { header: 'المستلم', key: 'recipient_name', width: 22 },
+        { header: 'الهاتف', key: 'recipient_phone', width: 15 },
+        { header: 'الهاتف الاحتياطي', key: 'recipient_phone2', width: 15 },
+        { header: 'العنوان', key: 'recipient_address', width: 40 },
+        { header: 'الحالة', key: (s) => SHIPMENT_STATUS_LABELS[s.status] || s.status, width: 15 },
+        { header: 'طريقة الدفع', key: (s) => PAYMENT_METHOD_LABELS[s.payment_method] || s.payment_method, width: 16 },
+        { header: 'مبلغ COD', key: 'cod_amount', width: 12 },
+        { header: 'رسوم الشحن', key: 'delivery_fee', width: 12 },
+        { header: 'الوزن (كجم)', key: 'weight', width: 10 },
+        { header: 'العدد', key: 'quantity', width: 8 },
+        { header: 'التاجر', key: (s) => (s.merchant as any)?.store_name || '', width: 22 },
+        { header: 'المندوب', key: (s) => (s.courier as any)?.name || '', width: 18 },
+        { header: 'المنطقة', key: (s) => (s.zone as any)?.name || '', width: 18 },
+        { header: 'تاريخ الإنشاء', key: (s) => new Date(s.created_at).toLocaleDateString('ar-EG'), width: 14 },
+      ],
+      `shipments-${todayStamp()}.xlsx`,
+      'الشحنات'
+    )
+    toast.success('تم تصدير الشحنات بنجاح')
   }
 
   return (

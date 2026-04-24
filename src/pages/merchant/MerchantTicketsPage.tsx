@@ -68,6 +68,7 @@ export default function MerchantTicketsPage() {
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
   const [active, setActive] = useState<Ticket | null>(null)
+  const [schemaReady, setSchemaReady] = useState(true)
 
   const loadMerchant = useCallback(async () => {
     if (!user) return
@@ -83,7 +84,11 @@ export default function MerchantTicketsPage() {
       .select('*, shipment:shipments(tracking_number)')
       .eq('merchant_id', merchantId)
       .order('created_at', { ascending: false })
-    if (!error && data) setTickets(data as Ticket[])
+    if (error && (error.message || '').toLowerCase().includes('relation')) {
+      setSchemaReady(false)
+    } else if (!error && data) {
+      setTickets(data as Ticket[])
+    }
     setLoading(false)
   }, [merchantId])
 
@@ -106,7 +111,14 @@ export default function MerchantTicketsPage() {
         </Button>
       </div>
 
-      {loading ? (
+      {!schemaReady ? (
+        <Card className="border-2 border-amber-200 bg-amber-50">
+          <div className="py-8 text-center">
+            <LifeBuoy className="w-10 h-10 text-amber-600 mx-auto mb-2" />
+            <p className="text-sm text-amber-800">نظام التذاكر قيد التفعيل — يرجى مراجعة الإدارة لاحقاً</p>
+          </div>
+        </Card>
+      ) : loading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
         </div>

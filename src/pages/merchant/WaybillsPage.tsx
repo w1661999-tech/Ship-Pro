@@ -8,6 +8,7 @@ import { formatCurrency, PAYMENT_METHOD_LABELS } from '@/utils/helpers'
 import { Printer, Search, Package, CheckSquare, Square, Truck, MapPin, Phone, Calendar } from 'lucide-react'
 import type { Shipment } from '@/types/database'
 import toast from 'react-hot-toast'
+import WaybillBarcode from '@/components/WaybillBarcode'
 
 export default function WaybillsPage() {
   const { user } = useAuthStore()
@@ -19,6 +20,7 @@ export default function WaybillsPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'assigned' | 'picked_up'>('all')
+  const [paperSize, setPaperSize] = useState<'a4' | 'thermal10x15' | 'thermal80mm'>('a4')
 
   useEffect(() => {
     if (!user) return
@@ -89,20 +91,15 @@ export default function WaybillsPage() {
 
   return (
     <>
-      {/* Print styles */}
+      {/* Print styles - supports A4 (2-up grid), 10x15cm thermal, and 80mm thermal receipts */}
       <style>{`
         @media print {
           .no-print { display: none !important; }
           * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          @page {
-            size: A4;
-            margin: 10mm;
-          }
-          .print-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8mm;
-          }
+          body { direction: rtl; }
+          ${paperSize === 'a4' ? `
+          @page { size: A4; margin: 10mm; }
+          .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
           .print-waybill {
             break-inside: avoid;
             border: 1.5px solid #000 !important;
@@ -113,7 +110,40 @@ export default function WaybillsPage() {
             direction: rtl;
             font-size: 11px;
           }
-          body { direction: rtl; }
+          ` : paperSize === 'thermal10x15' ? `
+          @page { size: 100mm 150mm; margin: 2mm; }
+          .print-grid { display: block; }
+          .print-waybill {
+            page-break-after: always;
+            break-after: page;
+            border: 1px solid #000 !important;
+            border-radius: 3px;
+            padding: 4mm !important;
+            background: #fff;
+            font-family: 'Cairo', 'Arial', sans-serif;
+            direction: rtl;
+            width: 96mm;
+            height: 146mm;
+            box-sizing: border-box;
+            font-size: 10px;
+            overflow: hidden;
+          }
+          ` : `
+          @page { size: 80mm auto; margin: 1mm; }
+          .print-grid { display: block; }
+          .print-waybill {
+            page-break-after: always;
+            break-after: page;
+            border: 1px solid #000 !important;
+            padding: 2mm !important;
+            background: #fff;
+            font-family: 'Cairo', 'Arial', sans-serif;
+            direction: rtl;
+            width: 78mm;
+            box-sizing: border-box;
+            font-size: 9px;
+          }
+          `}
         }
         @media screen {
           .print-only { display: none; }
@@ -125,7 +155,19 @@ export default function WaybillsPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-black text-gray-900">بوالص الشحن</h1>
-            <p className="text-gray-500 text-sm">طباعة بوالص شحن احترافية للشحنات المحددة</p>
+            <p className="text-gray-500 text-sm">طباعة بوالص شحن احترافية - يدعم الطابعات الحرارية</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-gray-600">حجم البوليصة:</label>
+            <select
+              value={paperSize}
+              onChange={e => setPaperSize(e.target.value as 'a4' | 'thermal10x15' | 'thermal80mm')}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="a4">A4 (بوليصتين لكل صفحة)</option>
+              <option value="thermal10x15">حرارية 10×15 سم</option>
+              <option value="thermal80mm">حرارية 80mm</option>
+            </select>
           </div>
           <Button
             onClick={handlePrint}
@@ -306,7 +348,7 @@ export default function WaybillsPage() {
 
               {/* ---- Barcode visual ---- */}
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                <BarcodeVisual value={s.tracking_number} />
+                <WaybillBarcode value={s.tracking_number} height={55} width={1.8} fontSize={9} />
               </div>
               <div style={{ textAlign: 'center', fontSize: '8px', marginBottom: '8px', letterSpacing: '2px', fontFamily: 'monospace' }}>
                 {s.tracking_number}

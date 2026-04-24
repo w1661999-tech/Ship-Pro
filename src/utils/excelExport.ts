@@ -10,7 +10,7 @@ export interface ExportColumn<T> {
  * Export data rows to an Excel (.xlsx) file and trigger browser download.
  * All headers are in Arabic and the workbook is RTL-ready.
  */
-export function exportToExcel<T extends Record<string, unknown>>(
+export function exportToExcel<T>(
   rows: T[],
   columns: ExportColumn<T>[],
   fileName = 'ship-pro-export.xlsx',
@@ -19,7 +19,9 @@ export function exportToExcel<T extends Record<string, unknown>>(
   const header = columns.map(c => c.header)
   const data = rows.map(row =>
     columns.map(c => {
-      const value = typeof c.key === 'function' ? c.key(row) : (row as Record<string, unknown>)[c.key as string]
+      const value = typeof c.key === 'function'
+        ? c.key(row)
+        : (row as unknown as Record<string, unknown>)[c.key as string]
       if (value == null) return ''
       if (value instanceof Date) return value.toISOString()
       return value as string | number
