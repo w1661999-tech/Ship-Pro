@@ -6,7 +6,7 @@ import { signOut } from '@/lib/supabase'
 import {
   LayoutDashboard, Package, Users, TruckIcon, DollarSign,
   MapPin, LogOut, Menu, ChevronDown, ChevronUp,
-  FileSpreadsheet, LifeBuoy, Warehouse
+  FileSpreadsheet, LifeBuoy, Warehouse, Settings
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import NotificationBell from '@/components/NotificationBell'
@@ -61,6 +61,11 @@ const navItems = [
     label: 'الدعم والتذاكر',
     path: '/admin/tickets',
     icon: LifeBuoy,
+  },
+  {
+    label: 'إعدادات النظام',
+    path: '/admin/system',
+    icon: Settings,
   },
 ]
 

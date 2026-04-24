@@ -22,6 +22,7 @@ const ImportPage = React.lazy(() => import('@/pages/admin/ImportPage'))
 const CollectionsPage = React.lazy(() => import('@/pages/admin/CollectionsPage'))
 const AdminTicketsPage = React.lazy(() => import('@/pages/admin/AdminTicketsPage'))
 const WarehousePage = React.lazy(() => import('@/pages/admin/WarehousePage'))
+const SystemPage = React.lazy(() => import('@/pages/admin/SystemPage'))
 
 const MerchantDashboard = React.lazy(() => import('@/pages/merchant/MerchantDashboard'))
 const MerchantShipmentsPage = React.lazy(() => import('@/pages/merchant/MerchantShipmentsPage'))
@@ -155,6 +156,7 @@ export default function App() {
                 <Route path="import" element={<ImportPage />} />
                 <Route path="tickets" element={<AdminTicketsPage />} />
                 <Route path="warehouses" element={<WarehousePage />} />
+                <Route path="system" element={<SystemPage />} />
               </Route>
 
               <Route
