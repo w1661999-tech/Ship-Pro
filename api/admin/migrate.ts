@@ -1,57 +1,70 @@
 /**
  * Admin Migration Endpoint
  * Secured by MCP_TOKEN (Bearer).
- * Executes raw SQL using Supabase service role via a helper RPC.
+ *
+ * Tries to execute raw SQL using a Postgres connection via Supabase pooler,
+ * using service_role key as password (supported by Supavisor pooler).
  *
  * Usage:
  *   POST /api/admin/migrate
  *   Headers: Authorization: Bearer <MCP_TOKEN>
  *   Body: { "sql": "... raw SQL statements ..." }
- *
- * On first run, the helper RPC `ship_pro_exec_sql` is not installed yet.
- * The endpoint will return { bootstrap_required: true, bootstrap_sql } –
- * copy that SQL snippet and run it once in Supabase SQL editor.
+ *        OR
+ *        { "migrationFile": "20260423_enterprise_modules" }  // load from supabase/migrations/
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { Client } from 'pg'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const MCP_TOKEN = process.env.MCP_TOKEN || ''
 
-const BOOTSTRAP_SQL = `
-create or replace function public.ship_pro_exec_sql(query text)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-begin
-  execute query;
-  return jsonb_build_object('ok', true);
-exception when others then
-  return jsonb_build_object('ok', false, 'error', SQLERRM);
-end;
-$$;
+function projectRef(): string {
+  // https://<ref>.supabase.co
+  const m = SUPABASE_URL.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)
+  return m ? m[1] : ''
+}
 
-revoke all on function public.ship_pro_exec_sql(text) from public;
-grant execute on function public.ship_pro_exec_sql(text) to service_role;
-`.trim()
+async function runSql(sql: string): Promise<{ ok: boolean; error?: string; rows?: unknown }> {
+  const ref = projectRef()
+  if (!ref) return { ok: false, error: 'Invalid SUPABASE_URL' }
 
-async function callRpc(sql: string) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ship_pro_exec_sql`, {
-    method: 'POST',
-    headers: {
-      apikey: SERVICE_ROLE,
-      Authorization: `Bearer ${SERVICE_ROLE}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query: sql }),
-  })
-  const text = await res.text()
-  let body: unknown = text
-  try { body = JSON.parse(text) } catch { /* keep as text */ }
-  return { status: res.status, body }
+  // Supabase pooler connection (Supavisor) - session mode for DDL
+  const hosts = [
+    `aws-0-us-east-1.pooler.supabase.com`,
+    `aws-0-eu-west-1.pooler.supabase.com`,
+    `aws-0-ap-southeast-1.pooler.supabase.com`,
+    `aws-0-us-west-1.pooler.supabase.com`,
+  ]
+
+  let lastError = ''
+
+  for (const host of hosts) {
+    const client = new Client({
+      host,
+      port: 5432,
+      user: `postgres.${ref}`,
+      password: SERVICE_ROLE,
+      database: 'postgres',
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 8000,
+    })
+
+    try {
+      await client.connect()
+      const res = await client.query(sql)
+      await client.end()
+      return { ok: true, rows: res.rows }
+    } catch (err) {
+      lastError = (err as Error).message
+      try { await client.end() } catch { /* ignore */ }
+    }
+  }
+
+  return { ok: false, error: lastError || 'Could not connect to any pooler host' }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -75,34 +88,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ ok: false, error: 'Supabase env missing' })
   }
 
-  const { sql, bootstrap } = (req.body || {}) as { sql?: string; bootstrap?: boolean }
+  let { sql, migrationFile } = (req.body || {}) as { sql?: string; migrationFile?: string }
 
-  if (bootstrap) {
-    return res.status(200).json({
-      ok: true,
-      message: 'Run this SQL once in the Supabase SQL editor, then retry migrations:',
-      bootstrap_sql: BOOTSTRAP_SQL,
-    })
+  if (migrationFile) {
+    try {
+      const path = join(process.cwd(), 'supabase', 'migrations', `${migrationFile}.sql`)
+      sql = readFileSync(path, 'utf8')
+    } catch (e) {
+      return res.status(404).json({ ok: false, error: `Migration file not found: ${migrationFile}` })
+    }
   }
 
   if (!sql || typeof sql !== 'string') {
-    return res.status(400).json({ ok: false, error: 'Missing sql' })
+    return res.status(400).json({ ok: false, error: 'Missing sql or migrationFile' })
   }
 
-  try {
-    const result = await callRpc(sql)
+  const result = await runSql(sql)
 
-    if (result.status === 404) {
-      return res.status(412).json({
-        ok: false,
-        error: 'Helper RPC ship_pro_exec_sql not installed',
-        bootstrap_required: true,
-        bootstrap_sql: BOOTSTRAP_SQL,
-      })
-    }
-
-    return res.status(result.status).json({ ok: result.status < 400, result: result.body })
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: (err as Error).message })
+  if (result.ok) {
+    return res.status(200).json({ ok: true, message: 'SQL executed successfully', rows: result.rows })
+  } else {
+    return res.status(500).json({ ok: false, error: result.error })
   }
 }
