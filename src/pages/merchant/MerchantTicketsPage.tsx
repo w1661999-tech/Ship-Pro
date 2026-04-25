@@ -84,7 +84,7 @@ export default function MerchantTicketsPage() {
       .select('*, shipment:shipments(tracking_number)')
       .eq('merchant_id', merchantId)
       .order('created_at', { ascending: false })
-    if (error && (error.message || '').toLowerCase().includes('relation')) {
+    if (error && (error.code === 'PGRST205' || ((error.message || '') + (error.details || '')).toLowerCase().includes('not find the table'))) {
       setSchemaReady(false)
     } else if (!error && data) {
       setTickets(data as Ticket[])

@@ -52,7 +52,7 @@ export default function AdminTicketsPage() {
       .order('created_at', { ascending: false })
     if (filterStatus) q = q.eq('status', filterStatus)
     const { data, error } = await q
-    if (error && (error.message || '').toLowerCase().includes('relation')) {
+    if (error && (error.code === 'PGRST205' || ((error.message || '') + (error.details || '')).toLowerCase().includes('not find the table'))) {
       setSchemaReady(false)
     } else {
       setTickets((data || []) as Ticket[])

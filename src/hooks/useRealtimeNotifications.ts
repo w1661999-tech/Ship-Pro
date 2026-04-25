@@ -28,7 +28,12 @@ export function useRealtimeNotifications() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(30)
-    if (!error && data) setItems(data as ShipNotification[])
+    if (!error && data) {
+      setItems(data as ShipNotification[])
+    } else if (error?.code === 'PGRST205' || ((error?.message || '') + (error?.details || '')).toLowerCase().includes('not find the table')) {
+      // Schema not migrated yet - silently keep empty list
+      setItems([])
+    }
     setLoading(false)
   }, [user])
 

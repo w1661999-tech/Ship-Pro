@@ -63,7 +63,7 @@ export default function WarehousePage() {
     // Detect missing schema (tables don't exist yet)
     const missingSchema = [wh, sh, asg].some(r => {
       const msg = (r.error?.message || '').toLowerCase()
-      return msg.includes('relation') && msg.includes('does not exist')
+      return (r.error?.code === 'PGRST205' || msg.includes('not find the table'))
     })
     if (missingSchema) {
       setSchemaReady(false)
