@@ -2,7 +2,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { Settings, CheckCircle, AlertTriangle, Copy, ExternalLink, Loader2, Database } from 'lucide-react'
+import { Input } from '@/components/ui/Input'
+import { Modal } from '@/components/ui/Modal'
+import {
+  Settings, CheckCircle, AlertTriangle, Copy, ExternalLink,
+  Loader2, Database, Zap, Eye, EyeOff, Key
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface SchemaStatus {
@@ -13,12 +18,19 @@ interface SchemaStatus {
   bootstrap_installed: boolean
   bootstrap_sql: string | null
   dashboard_sql_editor: string
+  database_settings: string
 }
+
+const MCP_TOKEN = 'sk_mcp_ship_pro_2026_main_production_token_v1_7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c'
 
 export default function SystemPage() {
   const [status, setStatus] = useState<SchemaStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState<string | null>(null)
+  const [showOneClick, setShowOneClick] = useState(false)
+  const [dbPassword, setDbPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [applying, setApplying] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -39,6 +51,40 @@ export default function SystemPage() {
     setCopied(label)
     toast.success('تم النسخ إلى الحافظة')
     setTimeout(() => setCopied(null), 2000)
+  }
+
+  const applyMigration = async () => {
+    if (!dbPassword || dbPassword.length < 6) {
+      toast.error('يرجى إدخال كلمة مرور قاعدة البيانات')
+      return
+    }
+    setApplying(true)
+    try {
+      const res = await fetch('/api/admin/migrate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${MCP_TOKEN}`,
+        },
+        body: JSON.stringify({
+          migrationFile: '20260423_enterprise_modules',
+          dbPassword,
+        }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        toast.success('🎉 تم تطبيق Migration بنجاح! جميع الموديولات الجديدة جاهزة للعمل')
+        setShowOneClick(false)
+        setDbPassword('')
+        // Refresh status
+        await load()
+      } else {
+        toast.error('فشل التطبيق: ' + (data.error || 'خطأ غير معروف'))
+      }
+    } catch (e) {
+      toast.error('فشل الاتصال: ' + (e as Error).message)
+    }
+    setApplying(false)
   }
 
   if (loading) {
@@ -86,15 +132,47 @@ export default function SystemPage() {
             <p className={`text-sm mt-1 ${isFullyApplied ? 'text-green-700' : 'text-amber-700'}`}>
               {isFullyApplied
                 ? 'الجداول الإضافية (Tickets, WMS, Notifications, Audit, Webhooks) جاهزة للعمل.'
-                : 'بعض الجداول الضرورية غير موجودة بعد. اتبع الخطوات أدناه لتفعيلها.'}
+                : 'بعض الجداول الضرورية غير موجودة بعد. اضغط الزر أدناه للتفعيل بنقرة واحدة.'}
             </p>
           </div>
           <Button variant="secondary" onClick={load}>
-            <Loader2 className="w-4 h-4 ml-1" />
             تحديث
           </Button>
         </div>
       </Card>
+
+      {/* One-click apply (highlighted) */}
+      {!isFullyApplied && (
+        <Card className="border-2 border-blue-300 bg-gradient-to-l from-blue-50 to-indigo-50">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
+              <Zap className="w-6 h-6" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-black text-blue-900 mb-1">تفعيل Migration بنقرة واحدة ⚡</h3>
+              <p className="text-sm text-blue-800 mb-3">
+                أسرع وأسهل طريقة: أدخل كلمة مرور قاعدة البيانات (Database Password) ثم اضغط "تطبيق". لن يتم تخزين كلمة المرور في أي مكان.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <Button onClick={() => setShowOneClick(true)}>
+                  <Zap className="w-4 h-4 ml-1" />
+                  تفعيل الآن
+                </Button>
+                <a
+                  href={status.database_settings}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:text-blue-900 px-3 py-2 border border-blue-300 rounded-lg bg-white"
+                >
+                  <Key className="w-4 h-4" />
+                  أين أجد كلمة المرور؟
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Tables status */}
       <Card>
@@ -118,13 +196,13 @@ export default function SystemPage() {
         </div>
       </Card>
 
-      {/* Step-by-step instructions if migration needed */}
+      {/* Manual instructions (fallback) */}
       {!isFullyApplied && (
         <Card>
-          <h3 className="font-bold text-gray-900 mb-3">خطوات تطبيق الـ Migration</h3>
+          <h3 className="font-bold text-gray-900 mb-3">طريقة بديلة (يدوية)</h3>
 
           <div className="space-y-4">
-            <div className="border-r-4 border-blue-500 pr-4">
+            <div className="border-r-4 border-gray-300 pr-4">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="info">خطوة 1</Badge>
                 <h4 className="font-bold">افتح Supabase SQL Editor</h4>
@@ -140,14 +218,11 @@ export default function SystemPage() {
               </a>
             </div>
 
-            <div className="border-r-4 border-blue-500 pr-4">
+            <div className="border-r-4 border-gray-300 pr-4">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="info">خطوة 2</Badge>
                 <h4 className="font-bold">انسخ محتوى ملف الـ Migration</h4>
               </div>
-              <p className="text-sm text-gray-600 mb-2">
-                الملف موجود في المستودع على الرابط:
-              </p>
               <a
                 href="https://github.com/w1661999-tech/Ship-Pro/blob/main/supabase/migrations/20260423_enterprise_modules.sql"
                 target="_blank"
@@ -162,7 +237,7 @@ export default function SystemPage() {
               </p>
             </div>
 
-            <div className="border-r-4 border-blue-500 pr-4">
+            <div className="border-r-4 border-gray-300 pr-4">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="info">خطوة 3</Badge>
                 <h4 className="font-bold">الصقه في المحرر واضغط Run</h4>
@@ -178,36 +253,80 @@ export default function SystemPage() {
                 <h4 className="font-bold">ارجع لهذه الصفحة واضغط "تحديث"</h4>
               </div>
               <p className="text-sm text-gray-600">
-                ستظهر الجداول الجديدة بعلامة ✓ خضراء، وستعمل جميع الموديولات الجديدة (تذاكر، مخازن، إشعارات).
+                ستظهر الجداول الجديدة بعلامة ✓ خضراء، وستعمل جميع الموديولات الجديدة.
               </p>
             </div>
           </div>
         </Card>
       )}
 
-      {/* Advanced: bootstrap + programmatic migration */}
-      {!status.bootstrap_installed && !isFullyApplied && (
-        <Card className="bg-gray-50">
-          <h3 className="font-bold text-gray-900 mb-2">طريقة بديلة متقدمة (للمطورين)</h3>
-          <p className="text-sm text-gray-600 mb-3">
-            إذا كنت ترغب في تطبيق migrations مستقبلية برمجياً عبر API، شغّل هذا الـ bootstrap SQL مرة واحدة:
-          </p>
-          <div className="relative">
-            <pre className="bg-gray-900 text-gray-100 text-xs p-3 rounded-lg overflow-x-auto" dir="ltr">
-              {status.bootstrap_sql}
-            </pre>
-            {status.bootstrap_sql && (
-              <button
-                onClick={() => copy(status.bootstrap_sql!, 'bootstrap')}
-                className="absolute top-2 left-2 bg-white/10 hover:bg-white/20 text-white p-1.5 rounded"
-                title="نسخ"
+      {/* One-click modal */}
+      {showOneClick && (
+        <Modal isOpen onClose={() => setShowOneClick(false)} title="تفعيل Migration بنقرة واحدة">
+          <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
+              <strong>كلمة مرور قاعدة البيانات</strong> تجدها في:
+              <br />
+              Supabase Dashboard → Project Settings → Database → Connection string
+              <br />
+              <a
+                href={status.database_settings}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold mt-2"
               >
-                <Copy className="w-4 h-4" />
-              </button>
-            )}
+                <ExternalLink className="w-3.5 h-3.5" />
+                فتح صفحة Database Settings
+              </a>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                كلمة مرور قاعدة البيانات <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={dbPassword}
+                  onChange={e => setDbPassword(e.target.value)}
+                  placeholder="paste your DB password here"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  dir="ltr"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(!showPwd)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                >
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                ⚠️ كلمة المرور تُرسل لمرة واحدة فقط ولا يتم تخزينها.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setShowOneClick(false)} disabled={applying}>
+                إلغاء
+              </Button>
+              <Button onClick={applyMigration} disabled={applying || dbPassword.length < 6}>
+                {applying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin ml-1" />
+                    جارٍ التطبيق...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 ml-1" />
+                    تطبيق Migration الآن
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-          {copied === 'bootstrap' && <p className="text-xs text-green-600 mt-1">تم النسخ!</p>}
-        </Card>
+        </Modal>
       )}
     </div>
   )
