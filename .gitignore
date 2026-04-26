@@ -83,3 +83,4 @@ Thumbs.db
 .github/workflows/ci-cd.yml
 .github/workflows/ci.yml
 .github/workflows/pr-check.yml
+_credentials_DO_NOT_COMMIT/
