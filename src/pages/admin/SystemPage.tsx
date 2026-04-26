@@ -60,6 +60,8 @@ export default function SystemPage() {
     }
     setApplying(true)
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 90000)
       const res = await fetch('/api/admin/migrate', {
         method: 'POST',
         headers: {
@@ -70,16 +72,26 @@ export default function SystemPage() {
           migrationFile: '20260423_enterprise_modules',
           dbPassword,
         }),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const data = await res.json()
       if (data.ok) {
-        toast.success('🎉 تم تطبيق Migration بنجاح! جميع الموديولات الجديدة جاهزة للعمل')
+        toast.success('🎉 تم تطبيق Migration بنجاح! جميع الموديولات الجديدة جاهزة للعمل', { duration: 6000 })
         setShowOneClick(false)
         setDbPassword('')
-        // Refresh status
         await load()
       } else {
-        toast.error('فشل التطبيق: ' + (data.error || 'خطأ غير معروف'))
+        const errMsg = data.error || 'خطأ غير معروف'
+        let arabicMsg = errMsg
+        if (errMsg.includes('password authentication failed')) {
+          arabicMsg = 'كلمة المرور غير صحيحة. تحقق من Supabase Dashboard → Settings → Database'
+        } else if (errMsg.includes('Tenant or user not found')) {
+          arabicMsg = 'تعذر العثور على المشروع في الـ pooler. تحقق من إعدادات قاعدة البيانات'
+        } else if (errMsg.includes('timeout')) {
+          arabicMsg = 'انقضت مهلة الاتصال. حاول مرة أخرى'
+        }
+        toast.error('فشل التطبيق: ' + arabicMsg, { duration: 6000 })
       }
     } catch (e) {
       toast.error('فشل الاتصال: ' + (e as Error).message)
