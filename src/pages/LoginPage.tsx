@@ -63,8 +63,8 @@ export default function LoginPage() {
 
   const demoAccounts = [
     { role: 'مدير النظام', email: 'admin@shippro.eg', password: 'Admin@123456', color: '#3b82f6', icon: Shield, desc: 'لوحة التحكم الكاملة' },
-    { role: 'تاجر', email: 'merchant@shippro.eg', password: 'Merchant@123456', color: '#22c55e', icon: Package, desc: 'إدارة الشحنات والتسويات' },
-    { role: 'مندوب توصيل', email: 'driver@shippro.eg', password: 'Driver@123456', color: '#f97316', icon: Truck, desc: 'عمليات التوصيل والتحصيل' },
+    { role: 'تاجر', email: 'merchant@shippro.eg', password: 'Merchant@123', color: '#22c55e', icon: Package, desc: 'إدارة الشحنات والتسويات' },
+    { role: 'مندوب توصيل', email: 'driver@shippro.eg', password: 'Driver@123', color: '#f97316', icon: Truck, desc: 'عمليات التوصيل والتحصيل' },
   ]
 
   return (

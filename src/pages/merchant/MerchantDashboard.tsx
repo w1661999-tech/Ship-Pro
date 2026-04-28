@@ -33,11 +33,11 @@ export default function MerchantDashboard() {
 
   async function loadMerchantData() {
     if (!user) return
-    
+
     // Find merchant by user_id
     const { data: merchant } = await supabase
       .from('merchants')
-      .select('id, balance, pending_settlement')
+      .select('id')
       .eq('user_id', user.id)
       .single()
 
@@ -47,31 +47,26 @@ export default function MerchantDashboard() {
     }
 
     setMerchantId(merchant.id)
-    
-    const [
-      { count: total },
-      { count: delivered },
-      { count: pending },
-      { count: returned },
-      { data: recent },
-    ] = await Promise.all([
-      supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('merchant_id', merchant.id),
-      supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('merchant_id', merchant.id).eq('status', 'delivered'),
-      supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('merchant_id', merchant.id).in('status', ['pending', 'assigned', 'picked_up', 'in_transit', 'out_for_delivery']),
-      supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('merchant_id', merchant.id).in('status', ['returned', 'refused']),
+
+    // Single high-perf RPC instead of 5 round-trips
+    const [{ data: rpcStats }, { data: recent }] = await Promise.all([
+      supabase.rpc('merchant_dashboard_stats', { p_merchant_id: merchant.id }),
       supabase.from('shipments').select('*, courier:couriers(name)').eq('merchant_id', merchant.id).order('created_at', { ascending: false }).limit(6),
     ])
 
-    const { data: codShipments } = await supabase.from('shipments')
-      .select('cod_amount').eq('merchant_id', merchant.id).eq('status', 'delivered')
-    
-    const totalCOD = (codShipments || []).reduce((sum, s) => sum + (s.cod_amount || 0), 0)
-    const deliveryRate = total ? Math.round(((delivered || 0) / total) * 100) : 0
+    const s = (rpcStats || {}) as any
+    const total = Number(s.total_shipments || 0)
+    const delivered = Number(s.delivered || 0)
+    const deliveryRate = total ? Math.round((delivered / total) * 100) : 0
 
     setStats({
-      total: total || 0, delivered: delivered || 0, pending: pending || 0,
-      returned: returned || 0, balance: merchant.balance, 
-      pendingSettlement: merchant.pending_settlement, cod: totalCOD,
+      total,
+      delivered,
+      pending: Number(s.pending || 0) + Number(s.in_transit || 0),
+      returned: Number(s.returned || 0),
+      balance: Number(s.balance || 0),
+      pendingSettlement: Number(s.pending_settlement || 0),
+      cod: Number(s.total_cod || 0),
       deliveryRate,
     })
     setRecentShipments(recent || [])
