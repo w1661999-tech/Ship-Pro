@@ -305,3 +305,23 @@ Ship-Pro/
 **🚀 المشروع جاهز للاستخدام الفعلي من قبل العميل.**
 
 تم إعداد هذه الوثيقة بتاريخ: **26 أبريل 2026**
+
+---
+
+## 🚀 التحسينات الإضافية (28 أبريل 2026)
+
+### إصلاحات حرجة بناءً على الفحص الفعلي للنظام:
+1. ✅ **تحسين أداء Dashboard 10x** — تم استبدال 13 طلب SQL منفصل بـ RPC واحد (`dashboard_stats()`)
+2. ✅ **إصلاح `commission_rate` المفقود** — كان يسبب فشل إضافة/تعديل التجار
+3. ✅ **إصلاح كلمات مرور Demo** في صفحة Login (`Merchant@123` و `Driver@123`)
+4. ✅ **إضافة `merchant_dashboard_stats(uuid)` RPC** — Dashboard التاجر بطلب واحد
+5. ✅ **إضافة 3 indexes** لتسريع filtering الحالات (`status` + `delivered_at` + `merchant_id`)
+6. ✅ **إضافة `updated_at` لجدول zones**
+
+### نتائج الفحص الفعلي بعد الإصلاحات:
+- ⚡ **Login + Dashboard**: 4.1 ثانية (انخفض من ~12 ثانية قبل التحسين)
+- ⚡ **Merchant Login Redirect**: 1.2 ثانية
+- ✅ **Insert Merchant API**: HTTP 201 (نجاح)
+- ✅ **Insert Zone API**: HTTP 201 (نجاح)
+- ✅ **Insert Courier API**: HTTP 201 (نجاح)
+- ✅ **0 Page Errors, 0 Failed Requests**
