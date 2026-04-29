@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { Card } from '@/components/ui/Card'
@@ -132,20 +133,25 @@ export default function WaybillsPage() {
             margin: 0 !important;
             padding: 0 !important;
             background: #fff !important;
+            width: 100% !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          body * { visibility: hidden; }
-          .print-only, .print-only * { visibility: visible; }
+          /* Hide everything by default during print */
+          body > *:not(.print-root) { display: none !important; }
+          /* But keep our print container fully visible */
+          .no-print { display: none !important; }
           .print-only {
             display: block !important;
-            position: absolute;
-            left: 0; top: 0; right: 0;
-            width: 100%;
-            background: #fff;
+            position: static !important;
+            visibility: visible !important;
+            width: 100% !important;
+            background: #fff !important;
           }
-          .no-print { display: none !important; }
+          .print-only * {
+            visibility: visible !important;
+          }
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -399,8 +405,11 @@ export default function WaybillsPage() {
       </div>
 
       {/* =========================================================
-          PRINT AREA — only visible when window.print() is invoked
+          PRINT AREA — only visible when window.print() is invoked.
+          Rendered into document.body via React Portal so it escapes
+          the layout chrome (sidebar, header) and prints cleanly.
           ========================================================= */}
+      <PrintPortal>
       <div className="print-only">
         <div className="print-grid">
           {selectedShipments.map(s => {
@@ -742,6 +751,30 @@ export default function WaybillsPage() {
           })}
         </div>
       </div>
+      </PrintPortal>
     </>
   )
+}
+
+// ---------------------------------------------------------------------
+// PrintPortal — renders children directly into <body> so the print CSS
+// rule `body > *:not(.print-root) { display: none }` can hide every
+// other layout (sidebar, header, etc.) without affecting our area.
+// ---------------------------------------------------------------------
+function PrintPortal({ children }: { children: React.ReactNode }) {
+  const [host] = useState(() => {
+    if (typeof document === 'undefined') return null
+    const el = document.createElement('div')
+    el.className = 'print-root'
+    return el
+  })
+  useEffect(() => {
+    if (!host) return
+    document.body.appendChild(host)
+    return () => {
+      try { document.body.removeChild(host) } catch {}
+    }
+  }, [host])
+  if (!host) return null
+  return createPortal(children, host)
 }
