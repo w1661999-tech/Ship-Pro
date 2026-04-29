@@ -86,71 +86,151 @@ export default function WaybillsPage() {
 
   const handlePrint = () => {
     if (selected.size === 0) { toast.error('يرجى اختيار شحنة واحدة على الأقل'); return }
-    window.print()
+    // Slight delay so the print-only DOM is fully painted (barcodes may need a tick).
+    setTimeout(() => window.print(), 100)
+  }
+
+  // Helpers ----------------------------------------------------------------
+
+  const fmtDate = (d?: string | null) => {
+    if (!d) return '—'
+    try {
+      return new Date(d).toLocaleDateString('ar-EG', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      })
+    } catch { return '—' }
   }
 
   return (
     <>
-      {/* Print styles - supports A4 (2-up grid), 10x15cm thermal, and 80mm thermal receipts */}
+      {/*
+        ===================================================================
+        PRINT STYLES — fixed 2026-04-29
+        ===================================================================
+        Three layouts:
+          • A4: 2 waybills per page (2-up grid)
+          • thermal10x15 : 100mm × 150mm thermal label printer
+          • thermal80mm  : 80mm thermal receipt printer
+
+        Critical fixes applied:
+          1. .print-only is now SHOWN during print (was missing rule).
+          2. The whole admin/merchant chrome (sidebar, header, sticky bars)
+             is hidden via html/body resets and the .no-print class.
+          3. body & html margins reset to avoid blank cards on first page.
+          4. Each waybill forces page-break-inside: avoid, so it never gets
+             split between pages (was the root cause of blank A4 pages).
+          5. Backgrounds, borders, colors are forced to print using
+             -webkit-print-color-adjust: exact.
+      */}
       <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          body { direction: rtl; }
-          ${paperSize === 'a4' ? `
-          @page { size: A4; margin: 10mm; }
-          .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
-          .print-waybill {
-            break-inside: avoid;
-            border: 1.5px solid #000 !important;
-            border-radius: 4px;
-            padding: 10px !important;
-            background: #fff;
-            font-family: 'Cairo', 'Arial', sans-serif;
-            direction: rtl;
-            font-size: 11px;
-          }
-          ` : paperSize === 'thermal10x15' ? `
-          @page { size: 100mm 150mm; margin: 2mm; }
-          .print-grid { display: block; }
-          .print-waybill {
-            page-break-after: always;
-            break-after: page;
-            border: 1px solid #000 !important;
-            border-radius: 3px;
-            padding: 4mm !important;
-            background: #fff;
-            font-family: 'Cairo', 'Arial', sans-serif;
-            direction: rtl;
-            width: 96mm;
-            height: 146mm;
-            box-sizing: border-box;
-            font-size: 10px;
-            overflow: hidden;
-          }
-          ` : `
-          @page { size: 80mm auto; margin: 1mm; }
-          .print-grid { display: block; }
-          .print-waybill {
-            page-break-after: always;
-            break-after: page;
-            border: 1px solid #000 !important;
-            padding: 2mm !important;
-            background: #fff;
-            font-family: 'Cairo', 'Arial', sans-serif;
-            direction: rtl;
-            width: 78mm;
-            box-sizing: border-box;
-            font-size: 9px;
-          }
-          `}
-        }
         @media screen {
-          .print-only { display: none; }
+          .print-only { display: none !important; }
+        }
+        @media print {
+          /* Reset page chrome */
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          body * { visibility: hidden; }
+          .print-only, .print-only * { visibility: visible; }
+          .print-only {
+            display: block !important;
+            position: absolute;
+            left: 0; top: 0; right: 0;
+            width: 100%;
+            background: #fff;
+          }
+          .no-print { display: none !important; }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          ${paperSize === 'a4' ? `
+            @page { size: A4; margin: 8mm; }
+            .print-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 6mm;
+              padding: 0;
+            }
+            .print-waybill {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              border: 2px solid #111 !important;
+              border-radius: 6px;
+              padding: 8px !important;
+              background: #fff !important;
+              font-family: 'Cairo', 'Tajawal', 'Arial', sans-serif;
+              direction: rtl;
+              font-size: 10.5px;
+              color: #111 !important;
+              min-height: 130mm;
+              display: flex;
+              flex-direction: column;
+            }
+            /* Force a page-break after every TWO waybills to keep the
+               2-up grid clean (avoids ‘orphan’ items causing blank space) */
+            .print-waybill:nth-child(2n) {
+              page-break-after: always;
+              break-after: page;
+            }
+          ` : paperSize === 'thermal10x15' ? `
+            @page { size: 100mm 150mm; margin: 0; }
+            .print-grid { display: block; padding: 0; }
+            .print-waybill {
+              page-break-after: always;
+              break-after: page;
+              page-break-inside: avoid;
+              break-inside: avoid;
+              border: 1px solid #000 !important;
+              padding: 3mm !important;
+              background: #fff !important;
+              font-family: 'Cairo', 'Tajawal', 'Arial', sans-serif;
+              direction: rtl;
+              width: 100mm;
+              height: 150mm;
+              box-sizing: border-box;
+              font-size: 9.5px;
+              overflow: hidden;
+              color: #111 !important;
+              display: flex;
+              flex-direction: column;
+            }
+            .print-waybill:last-child {
+              page-break-after: auto;
+              break-after: auto;
+            }
+          ` : `
+            @page { size: 80mm auto; margin: 1mm; }
+            .print-grid { display: block; padding: 0; }
+            .print-waybill {
+              page-break-after: always;
+              break-after: page;
+              page-break-inside: avoid;
+              border: 1px solid #000 !important;
+              padding: 2mm !important;
+              background: #fff !important;
+              font-family: 'Cairo', 'Tajawal', 'Arial', sans-serif;
+              direction: rtl;
+              width: 78mm;
+              box-sizing: border-box;
+              font-size: 9px;
+              color: #111 !important;
+            }
+            .print-waybill:last-child {
+              page-break-after: auto;
+            }
+          `}
         }
       `}</style>
 
-      {/* Screen view */}
+      {/* =========== SCREEN VIEW =========== */}
       <div className="no-print space-y-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -318,164 +398,350 @@ export default function WaybillsPage() {
         )}
       </div>
 
-      {/* =========== PRINT AREA =========== */}
+      {/* =========================================================
+          PRINT AREA — only visible when window.print() is invoked
+          ========================================================= */}
       <div className="print-only">
         <div className="print-grid">
-          {selectedShipments.map(s => (
-            <div key={s.id} className="print-waybill">
-              {/* ---- Waybill Header ---- */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                borderBottom: '2px solid #000',
-                paddingBottom: '8px',
-                marginBottom: '8px',
-              }}>
-                <div>
-                  <div style={{ fontWeight: 900, fontSize: '16px', color: '#1e3a5f' }}>🚚 Ship Pro</div>
-                  <div style={{ fontSize: '9px', color: '#666' }}>نظام الشحن الاحترافي</div>
-                </div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '13px', letterSpacing: '1px' }}>
-                    {s.tracking_number}
-                  </div>
-                  <div style={{ fontSize: '9px', color: '#666' }}>
-                    {new Date(s.created_at).toLocaleDateString('ar-EG')}
-                  </div>
-                </div>
-              </div>
-
-              {/* ---- Barcode visual ---- */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                <WaybillBarcode value={s.tracking_number} height={55} width={1.8} fontSize={9} />
-              </div>
-              <div style={{ textAlign: 'center', fontSize: '8px', marginBottom: '8px', letterSpacing: '2px', fontFamily: 'monospace' }}>
-                {s.tracking_number}
-              </div>
-
-              {/* ---- Main Info Grid ---- */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
-                {/* Recipient */}
-                <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '6px', background: '#f9fafb' }}>
-                  <div style={{ fontWeight: 700, fontSize: '9px', color: '#374151', marginBottom: '4px', borderBottom: '1px solid #e5e7eb', paddingBottom: '3px' }}>
-                    📦 المستلم
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: '12px', color: '#111' }}>{s.recipient_name}</div>
-                  <div style={{ fontSize: '11px', direction: 'ltr', textAlign: 'right' }}>{s.recipient_phone}</div>
-                  {s.recipient_phone2 && (
-                    <div style={{ fontSize: '10px', direction: 'ltr', textAlign: 'right', color: '#555' }}>{s.recipient_phone2}</div>
-                  )}
-                  <div style={{ fontSize: '9px', color: '#374151', marginTop: '2px' }}>{s.recipient_address}</div>
-                  <div style={{ fontSize: '9px', color: '#2563eb', fontWeight: 600, marginTop: '1px' }}>
-                    📍 {(s.zone as any)?.name || ''}
-                  </div>
-                </div>
-
-                {/* Sender */}
-                <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '6px', background: '#f0f9ff' }}>
-                  <div style={{ fontWeight: 700, fontSize: '9px', color: '#374151', marginBottom: '4px', borderBottom: '1px solid #e5e7eb', paddingBottom: '3px' }}>
-                    🏪 المُرسِل
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: '12px', color: '#111' }}>{merchantData?.store_name || ''}</div>
-                  <div style={{ fontSize: '11px', direction: 'ltr', textAlign: 'right' }}>{merchantData?.phone || ''}</div>
-                  {merchantData?.address && (
-                    <div style={{ fontSize: '9px', color: '#374151', marginTop: '2px' }}>{merchantData.address}</div>
-                  )}
-                </div>
-              </div>
-
-              {/* ---- Footer Info ---- */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '4px',
-                borderTop: '1px solid #ddd',
-                paddingTop: '6px',
-              }}>
-                <div style={{ textAlign: 'center', background: '#f9fafb', borderRadius: '4px', padding: '4px 2px' }}>
-                  <div style={{ color: '#6b7280', fontSize: '8px' }}>الوزن</div>
-                  <div style={{ fontWeight: 700, fontSize: '11px' }}>{s.weight} كجم</div>
-                </div>
-                <div style={{ textAlign: 'center', background: '#f9fafb', borderRadius: '4px', padding: '4px 2px' }}>
-                  <div style={{ color: '#6b7280', fontSize: '8px' }}>الدفع</div>
-                  <div style={{ fontWeight: 700, fontSize: '10px' }}>{PAYMENT_METHOD_LABELS[s.payment_method] || s.payment_method}</div>
-                </div>
-                <div style={{ textAlign: 'center', background: '#f9fafb', borderRadius: '4px', padding: '4px 2px' }}>
-                  <div style={{ color: '#6b7280', fontSize: '8px' }}>رسوم الشحن</div>
-                  <div style={{ fontWeight: 700, fontSize: '11px' }}>{s.delivery_fee} ج</div>
-                </div>
+          {selectedShipments.map(s => {
+            const totalAmount = (s.cod_amount || 0) + (s.delivery_fee || 0) + ((s as any).cod_fee || 0)
+            const codShown = (s.cod_amount || 0) > 0
+            return (
+              <div key={s.id} className="print-waybill">
+                {/* ===== HEADER ===== */}
                 <div style={{
-                  textAlign: 'center',
-                  background: s.cod_amount > 0 ? '#f0fdf4' : '#f9fafb',
-                  border: s.cod_amount > 0 ? '1.5px solid #bbf7d0' : '1px solid transparent',
-                  borderRadius: '4px',
-                  padding: '4px 2px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '2px solid #1e3a8a',
+                  paddingBottom: '6px',
+                  marginBottom: '6px',
                 }}>
-                  <div style={{ color: '#6b7280', fontSize: '8px' }}>COD</div>
-                  <div style={{ fontWeight: 900, color: s.cod_amount > 0 ? '#16a34a' : '#9ca3af', fontSize: s.cod_amount > 0 ? '13px' : '10px' }}>
-                    {s.cod_amount > 0 ? `${s.cod_amount} ج` : 'مدفوع'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{
+                      width: '32px', height: '32px',
+                      background: '#1e3a8a', borderRadius: '6px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontSize: '18px', fontWeight: 900,
+                    }}>📦</div>
+                    <div>
+                      <div style={{ fontWeight: 900, fontSize: '15px', color: '#1e3a8a' }}>Ship Pro</div>
+                      <div style={{ fontSize: '8px', color: '#6b7280' }}>نظام الشحن الاحترافي</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{
+                      fontFamily: '"Courier New", monospace',
+                      fontWeight: 900,
+                      fontSize: '13px',
+                      letterSpacing: '1px',
+                      background: '#1e3a8a',
+                      color: '#fff',
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      direction: 'ltr',
+                    }}>
+                      {s.tracking_number}
+                    </div>
+                    <div style={{ fontSize: '8px', color: '#6b7280', marginTop: '2px' }}>
+                      تاريخ الإصدار: {fmtDate(s.created_at)}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Fragile / Notes */}
-              {(s.is_fragile || s.recipient_notes) && (
-                <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                  {s.is_fragile && (
-                    <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '4px', padding: '4px 6px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '9px', color: '#92400e' }}>⚠️ قابل للكسر — يُرجى التعامل بحرص</span>
-                    </div>
-                  )}
-                  {s.recipient_notes && (
-                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px', padding: '4px 6px' }}>
-                      <span style={{ fontSize: '9px', color: '#1e40af' }}>📝 {s.recipient_notes}</span>
-                    </div>
-                  )}
+                {/* ===== BARCODE ===== */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  background: '#fff',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '4px',
+                  padding: '4px',
+                  marginBottom: '6px',
+                }}>
+                  <WaybillBarcode value={s.tracking_number} height={50} width={1.6} fontSize={8} />
                 </div>
-              )}
 
-              {/* Signature Line */}
-              <div style={{ marginTop: '8px', borderTop: '1px dashed #ccc', paddingTop: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <div>
-                  <div style={{ fontSize: '8px', color: '#9ca3af' }}>توقيع المستلم</div>
-                  <div style={{ borderBottom: '1px solid #374151', width: '80px', marginTop: '10px' }} />
+                {/* ===== ZONE BADGE (LARGE) ===== */}
+                {(s.zone as any)?.name && (
+                  <div style={{
+                    background: '#fef3c7',
+                    border: '1.5px solid #f59e0b',
+                    borderRadius: '4px',
+                    padding: '4px 6px',
+                    marginBottom: '6px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}>
+                    <span style={{ fontSize: '9px', fontWeight: 700, color: '#78350f' }}>📍 منطقة التسليم</span>
+                    <span style={{ fontSize: '13px', fontWeight: 900, color: '#78350f' }}>
+                      {(s.zone as any).name}
+                    </span>
+                  </div>
+                )}
+
+                {/* ===== RECIPIENT + SENDER GRID ===== */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '5px',
+                  marginBottom: '6px',
+                }}>
+                  {/* Recipient — TO */}
+                  <div style={{
+                    border: '1.5px solid #16a34a',
+                    borderRadius: '5px',
+                    padding: '5px',
+                    background: '#f0fdf4',
+                  }}>
+                    <div style={{
+                      fontWeight: 800,
+                      fontSize: '9px',
+                      color: '#15803d',
+                      marginBottom: '3px',
+                      borderBottom: '1px solid #86efac',
+                      paddingBottom: '2px',
+                      textAlign: 'center',
+                      background: '#16a34a',
+                      color: '#fff',
+                      borderRadius: '3px',
+                      padding: '2px 4px',
+                      margin: '-2px -2px 3px -2px',
+                    }}>
+                      📍 المستلم (إلى)
+                    </div>
+                    <div style={{ fontWeight: 900, fontSize: '12px', color: '#111', marginBottom: '1px' }}>
+                      {s.recipient_name}
+                    </div>
+                    <div style={{ fontSize: '11px', direction: 'ltr', textAlign: 'right', fontWeight: 700, color: '#1f2937' }}>
+                      📞 {s.recipient_phone}
+                    </div>
+                    {s.recipient_phone2 && (
+                      <div style={{ fontSize: '10px', direction: 'ltr', textAlign: 'right', color: '#374151' }}>
+                        ☎ {s.recipient_phone2}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '9px', color: '#1f2937', marginTop: '3px', lineHeight: 1.3 }}>
+                      🏠 {s.recipient_address}
+                    </div>
+                  </div>
+
+                  {/* Sender — FROM */}
+                  <div style={{
+                    border: '1.5px solid #2563eb',
+                    borderRadius: '5px',
+                    padding: '5px',
+                    background: '#eff6ff',
+                  }}>
+                    <div style={{
+                      fontWeight: 800,
+                      fontSize: '9px',
+                      textAlign: 'center',
+                      background: '#2563eb',
+                      color: '#fff',
+                      borderRadius: '3px',
+                      padding: '2px 4px',
+                      margin: '-2px -2px 3px -2px',
+                    }}>
+                      🏪 المرسل (من)
+                    </div>
+                    <div style={{ fontWeight: 900, fontSize: '12px', color: '#111', marginBottom: '1px' }}>
+                      {merchantData?.store_name || '—'}
+                    </div>
+                    <div style={{ fontSize: '11px', direction: 'ltr', textAlign: 'right', fontWeight: 700, color: '#1f2937' }}>
+                      📞 {merchantData?.phone || '—'}
+                    </div>
+                    {merchantData?.address && (
+                      <div style={{ fontSize: '9px', color: '#1f2937', marginTop: '3px', lineHeight: 1.3 }}>
+                        🏠 {merchantData.address}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '8px', color: '#9ca3af' }}>توقيع المندوب</div>
-                  <div style={{ borderBottom: '1px solid #374151', width: '80px', marginTop: '10px' }} />
+
+                {/* ===== PRODUCT DESCRIPTION ===== */}
+                {(s as any).product_description && (
+                  <div style={{
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '4px',
+                    padding: '4px 6px',
+                    background: '#f8fafc',
+                    marginBottom: '5px',
+                  }}>
+                    <div style={{ fontSize: '8px', fontWeight: 700, color: '#475569', marginBottom: '1px' }}>
+                      🎁 وصف المنتج
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#0f172a', fontWeight: 600 }}>
+                      {(s as any).product_description}
+                    </div>
+                  </div>
+                )}
+
+                {/* ===== FINANCE GRID — 4 COLUMNS ===== */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '4px',
+                  marginBottom: '5px',
+                }}>
+                  <div style={{
+                    textAlign: 'center',
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '4px',
+                    padding: '4px 2px',
+                  }}>
+                    <div style={{ color: '#475569', fontSize: '7.5px', fontWeight: 700 }}>الوزن</div>
+                    <div style={{ fontWeight: 900, fontSize: '11px', color: '#0f172a' }}>{s.weight || 1} كجم</div>
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '4px',
+                    padding: '4px 2px',
+                  }}>
+                    <div style={{ color: '#475569', fontSize: '7.5px', fontWeight: 700 }}>القطع</div>
+                    <div style={{ fontWeight: 900, fontSize: '11px', color: '#0f172a' }}>{(s as any).quantity || 1}</div>
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '4px',
+                    padding: '4px 2px',
+                  }}>
+                    <div style={{ color: '#475569', fontSize: '7.5px', fontWeight: 700 }}>طريقة الدفع</div>
+                    <div style={{ fontWeight: 900, fontSize: '9.5px', color: '#0f172a' }}>
+                      {PAYMENT_METHOD_LABELS[s.payment_method] || s.payment_method}
+                    </div>
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '4px',
+                    padding: '4px 2px',
+                  }}>
+                    <div style={{ color: '#475569', fontSize: '7.5px', fontWeight: 700 }}>رسوم الشحن</div>
+                    <div style={{ fontWeight: 900, fontSize: '11px', color: '#0f172a' }}>
+                      {s.delivery_fee || 0} ج.م
+                    </div>
+                  </div>
+                </div>
+
+                {/* ===== COD HIGHLIGHT (BIG) ===== */}
+                <div style={{
+                  background: codShown ? '#16a34a' : '#9ca3af',
+                  color: '#fff',
+                  border: '2px solid ' + (codShown ? '#15803d' : '#6b7280'),
+                  borderRadius: '6px',
+                  padding: '6px',
+                  marginBottom: '5px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '8.5px', fontWeight: 700, opacity: 0.9 }}>
+                      {codShown ? 'المبلغ المطلوب تحصيله من العميل' : 'حالة الدفع'}
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: 900, marginTop: '1px' }}>
+                      {codShown
+                        ? `${(s.cod_amount || 0).toLocaleString('ar-EG')} جنيه مصري`
+                        : '✓ مدفوع مسبقاً'}
+                    </div>
+                  </div>
+                  {codShown && (
+                    <div style={{
+                      background: '#fff',
+                      color: '#15803d',
+                      fontWeight: 900,
+                      fontSize: '18px',
+                      borderRadius: '50%',
+                      width: '36px',
+                      height: '36px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>💰</div>
+                  )}
+                </div>
+
+                {/* ===== FRAGILE / NOTES ===== */}
+                {(s.is_fragile || s.recipient_notes) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '5px' }}>
+                    {s.is_fragile && (
+                      <div style={{
+                        background: '#fef3c7',
+                        border: '1.5px solid #f59e0b',
+                        borderRadius: '4px',
+                        padding: '3px 6px',
+                        fontWeight: 800,
+                        fontSize: '9.5px',
+                        color: '#92400e',
+                      }}>
+                        ⚠️ قابل للكسر — يُرجى التعامل بحرص شديد
+                      </div>
+                    )}
+                    {s.recipient_notes && (
+                      <div style={{
+                        background: '#eff6ff',
+                        border: '1px solid #60a5fa',
+                        borderRadius: '4px',
+                        padding: '3px 6px',
+                        fontSize: '9.5px',
+                        color: '#1e40af',
+                      }}>
+                        📝 <span style={{ fontWeight: 700 }}>ملاحظات:</span> {s.recipient_notes}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ===== SIGNATURES ===== */}
+                <div style={{
+                  marginTop: 'auto',
+                  paddingTop: '5px',
+                  borderTop: '1px dashed #94a3b8',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '8px',
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '8px', color: '#475569', fontWeight: 700, marginBottom: '12px' }}>
+                      توقيع المستلم
+                    </div>
+                    <div style={{ borderBottom: '1.5px solid #1f2937', height: '0' }} />
+                    <div style={{ fontSize: '7px', color: '#94a3b8', marginTop: '2px' }}>الاسم والتاريخ</div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '8px', color: '#475569', fontWeight: 700, marginBottom: '12px' }}>
+                      توقيع المندوب
+                    </div>
+                    <div style={{ borderBottom: '1.5px solid #1f2937', height: '0' }} />
+                    <div style={{ fontSize: '7px', color: '#94a3b8', marginTop: '2px' }}>اسم المندوب والتاريخ</div>
+                  </div>
+                </div>
+
+                {/* ===== FOOTER ===== */}
+                <div style={{
+                  marginTop: '4px',
+                  paddingTop: '3px',
+                  borderTop: '1px solid #e2e8f0',
+                  fontSize: '7px',
+                  color: '#94a3b8',
+                  textAlign: 'center',
+                }}>
+                  للاستفسار: تتبع شحنتك على ship-pro-roan.vercel.app/track | هذه الوثيقة صادرة إلكترونياً ولا تحتاج لختم
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </>
-  )
-}
-
-function BarcodeVisual({ value }: { value: string }) {
-  const chars = value.split('')
-  const bars = chars.map((c, i) => {
-    const code = c.charCodeAt(0)
-    const wide = code % 3 === 0
-    const spaceBefore = i > 0 && chars[i - 1].charCodeAt(0) % 2 === 0
-    return { wide, spaceBefore }
-  })
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', height: '36px', gap: '1px' }}>
-      {bars.map((b, i) => (
-        <React.Fragment key={i}>
-          {b.spaceBefore && <div style={{ width: '2px' }} />}
-          <div style={{
-            width: b.wide ? '3px' : '1.5px',
-            height: i % 4 === 0 ? '100%' : i % 3 === 0 ? '85%' : '70%',
-            background: '#000',
-            borderRadius: '0.5px',
-          }} />
-        </React.Fragment>
-      ))}
-    </div>
   )
 }
